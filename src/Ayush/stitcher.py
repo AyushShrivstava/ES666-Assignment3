@@ -4,6 +4,8 @@ import cv2
 import os
 import numpy as np
 
+from skimage import exposure
+
 class PanaromaStitcher():
     def __init__(self):
         pass
@@ -23,7 +25,7 @@ class PanaromaStitcher():
         H = H/H[-1,-1]
         return H
     
-    def ransac(self, img1_pts, img2_pts, threshold=0.75, max_iter=1500):
+    def ransac(self, img1_pts, img2_pts, threshold=10.0, max_iter=1500):
         max_inliers = 0
         best_H = None
         best_inliers = []
@@ -149,8 +151,9 @@ class PanaromaStitcher():
         canvas[canvas_y_coords, canvas_x_coords] = np.where(
             (canvas_pixels == 0).all(axis=1, keepdims=True),
             img1_pixels,
-            (canvas_pixels // 2 + img1_pixels // 2)
+            canvas_pixels
         )
+
         return canvas
 
 
@@ -186,6 +189,9 @@ class PanaromaStitcher():
 
     def stich_two_images(self, img1, img2):
 
+        # img1 = exposure.match_histograms(img1, ref_img,channel_axis=-1)
+        # img2 = exposure.match_histograms(img2, ref_img,channel_axis=-1)
+
         img1_gray = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
         img2_gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
@@ -206,7 +212,7 @@ class PanaromaStitcher():
 
         good = []
         for m,n in matches:
-            if m.distance < 0.80*n.distance:
+            if m.distance < 0.75*n.distance:
                 good.append(m)
 
         img1_pts = []
@@ -234,18 +240,30 @@ class PanaromaStitcher():
         all_images = sorted(glob.glob(imf+os.sep+'*'))
         print('Found {} Images for stitching'.format(len(all_images)))
         print("focal lenght for images is {}".format(f))
+        n = len(all_images)
 
         for idx, img in enumerate(all_images):
             all_images[idx] = cv2.imread(img)
-            all_images[idx] = self.cylindricalWarp(all_images[idx],f)
             print('\t\t reading... {} having size {}'.format(img,all_images[idx].shape))
+
+        # if n%2 == 0:
+        #     ref_img = all_images[n//2-1].copy()
+        # else:
+        #     ref_img = all_images[len(all_images)//2].copy()
+
+        # ref_img= all_images[-1].copy()
+
+        for idx,img in enumerate(all_images):
+            # all_images[idx] = exposure.match_histograms(all_images[idx], ref_img,channel_axis=-1)
+            all_images[idx] = self.cylindricalWarp(all_images[idx],f)
+            
 
         all_stiched_images = []
         homography_matrix_list =[]
-        n = len(all_images)
         idx = 1
         if n%2 == 0:
             print('stiched_image {} pair of images'.format(idx))
+            # ref_img = all_images[n//2-1].copy()
             h,stitched_image = self.stich_two_images(all_images[n//2-1], all_images[n//2])
             left = all_images[:len(all_images)//2-1]
             right = all_images[len(all_images)//2+1:]
@@ -253,6 +271,7 @@ class PanaromaStitcher():
             homography_matrix_list.append(h)
             idx += 1
         else:
+            ref_img = all_images[len(all_images)//2].copy()
             stitched_image = all_images[len(all_images)//2]
             left = all_images[:len(all_images)//2]
             right = all_images[len(all_images)//2+1:]
@@ -292,37 +311,38 @@ class PanaromaStitcher():
 
         return all_stiched_images, homography_matrix_list 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
-#     np.random.seed(3471)
-#     # np.random.seed(3407)
+    np.random.seed(3471)
+    # np.random.seed(3407)
 
-#     # These informations have been obtained from the camera models and the meta info from the images
-#     # I then tweaked them a little to get the best results
-#     focal_pixels = {"I1": (16.0 * 3264) / 5.74,
-#                     # "I1": (9.107 * 3264) / 5.74,
-#                     "I2": (5.55 * 653) / 5.74,
-#                     "I3": (10.0 * 730)/ 6.17,
-#                     "I4": (25.5 * 2000) / 23.55,
-#                     "I5": (24.0 * 2000) / 23.55,
-#                     "I6": (30.0 * 602)/ 23.7}
+    # These informations have been obtained from the camera models and the meta info from the images
+    # I then tweaked them a little to get the best results
+    focal_pixels = {"I1": (16.0 * 3264) / 5.74,
+                    "I2": (5.55 * 653) / 5.74,
+                    "I3": (5.725 * 730)/ 6.17,
+                    "I4": (25.5 * 2000) / 23.55,
+                    "I5": (24.0 * 2000) / 23.55,
+                    "I6": (30.0 * 602)/ 23.7}
 
-#     # Test your implementation here
-#     # You can change the path to test your implementation on different images
-#     path = 'Images{}*'.format(os.sep)  # Use os.sep, Windows, linux have different path delimiters
-#     inst = PanaromaStitcher()
-#     for impaths in glob.glob(path):
-#         print('\t\t Processing... {}'.format(impaths))
-#         folder = impaths.split(os.sep)[-1]
-#         f=focal_pixels[folder]
-#         stitched_images, homography_matrix_list = inst.make_panaroma_for_images_in(path=impaths,f=f)
+    # Test your implementation here
+    # You can change the path to test your implementation on different images
+    # path = 'test_imgs{}*'.format(os.sep)  # Use os.sep, Windows, linux have different path delimiters
+    path = 'test_imgs{}*'.format(os.sep)  # Use os.sep, Windows, linux have different path delimiters
 
-#         outfile =  './results/{}/{}.png'.format(impaths.split(os.sep)[-1],inst.__class__.__name__)
-#         os.makedirs(os.path.dirname(outfile),exist_ok=True)
-#         cv2.imwrite(outfile,stitched_images[-1])
-#         for i in range(len(stitched_images)):
-#             cv2.imwrite('./results/{}/{}.png'.format(impaths.split(os.sep)[-1],"stitched_image_"+str(i)),stitched_images[i])
-#         print(homography_matrix_list)
-#         print(len(homography_matrix_list))
-#         print('Panaroma saved ... @ ./results/{}.png'.format(inst.__class__.__name__))
-#         print('\n\n')
+    inst = PanaromaStitcher()
+    for impaths in glob.glob(path):
+        print('\t\t Processing... {}'.format(impaths))
+        folder = impaths.split(os.sep)[-1]
+        f=focal_pixels[folder]
+        stitched_images, homography_matrix_list = inst.make_panaroma_for_images_in(path=impaths,f=f)
+
+        outfile =  './results/{}/{}.png'.format(impaths.split(os.sep)[-1],inst.__class__.__name__)
+        os.makedirs(os.path.dirname(outfile),exist_ok=True)
+        cv2.imwrite(outfile,stitched_images[-1])
+        for i in range(len(stitched_images)):
+            cv2.imwrite('./results/{}/{}.png'.format(impaths.split(os.sep)[-1],"stitched_image_"+str(i)),stitched_images[i])
+        print(homography_matrix_list)
+        print(len(homography_matrix_list))
+        print('Panaroma saved ... @ ./results/{}.png'.format(inst.__class__.__name__))
+        print('\n\n')
