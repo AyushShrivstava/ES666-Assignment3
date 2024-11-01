@@ -6,10 +6,10 @@ import os
 import cv2
 import numpy as np
 
-np.random.seed(0)
+np.random.seed(3471)
 
 
-focal_pixels = {"I1": (16.0 * 3264) / 5.74,
+focal_pixels = {"I1": (14.0 * 1632) / 5.74,
                 "I2": (5.55 * 653) / 5.74,
                 "I3": (5.725 * 730)/ 6.17,
                 "I4": (25.5 * 2000) / 23.55,

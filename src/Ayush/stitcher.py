@@ -318,7 +318,7 @@ if __name__ == '__main__':
 
     # These informations have been obtained from the camera models and the meta info from the images
     # I then tweaked them a little to get the best results
-    focal_pixels = {"I1": (16.0 * 3264) / 5.74,
+    focal_pixels = {"I1": (14 * 1632) / 5.74,
                     "I2": (5.55 * 653) / 5.74,
                     "I3": (5.725 * 730)/ 6.17,
                     "I4": (25.5 * 2000) / 23.55,
