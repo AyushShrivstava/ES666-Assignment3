@@ -166,3 +166,4 @@ resultscopy/
 results_old/
 test_imgs/
 dumpbin/
+*.DS_Store
